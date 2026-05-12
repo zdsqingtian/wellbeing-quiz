@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>幸福感诊断测评</title>
+  <style>
+    :root {
+      --c1: #4F46E5;
+      --c2: #818CF8;
+      --c3: #EEF2FF;
+      --c-body: #F8FAFC;
+      --c-text: #1E293B;
+      --c-muted: #64748B;
+      --c-border: #E2E8F0;
+      --c-white: #FFFFFF;
+      --c-red: #EF4444;
+      --c-orange: #F97316;
+      --c-yellow: #EAB308;
+      --c-green: #22C55E;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--c-body);
+      color: var(--c-text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      background: var(--c-white);
+      position: relative;
+    }
+
+    /* Progress bar */
+    .progress-bar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      max-width: 480px;
+      margin: 0 auto;
+      height: 4px;
+      background: var(--c-border);
+      z-index: 100;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--c1), var(--c2));
+      transition: width 0.5s ease;
+      border-radius: 0 2px 2px 0;
+    }
+
+    /* Screens */
+    .screen { display: none; padding: 32px 24px 60px; }
+    .screen.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Start screen */
+    .start-screen { text-align: center; padding-top: 60px; }
+    .start-icon {
+      width: 80px; height: 80px;
+      background: linear-gradient(135deg, var(--c1), var(--c2));
+      border-radius: 24px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 24px;
+      font-size: 36px;
+    }
+    .start-screen h1 { font-size: 24px; font-weight: 700; margin-bottom: 12px; }
+    .start-screen p { font-size: 15px; color: var(--c-muted); line-height: 1.7; margin-bottom: 32px; }
+    .start-meta {
+      display: flex; gap: 16px; justify-content: center;
+      margin-bottom: 36px;
+    }
+    .start-meta span {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; color: var(--c-muted);
+    }
+    .start-meta span::before {
+      content: '✓'; color: var(--c-green); font-weight: bold;
+    }
+    .btn-primary {
+      display: block;
+      width: 100%; padding: 16px;
+      background: linear-gradient(135deg, var(--c1), var(--c2));
+      color: white; border: none; border-radius: 16px;
+      font-size: 17px; font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 20px rgba(79, 70, 229, 0.3);
+    }
+    .btn-primary:active { transform: scale(0.98); }
+
+    /* Question screen */
+    .q-dim-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--c1);
+      background: var(--c3); padding: 4px 12px;
+      border-radius: 20px; margin-bottom: 16px;
+      font-weight: 500;
+    }
+    .q-number {
+      font-size: 13px; color: var(--c-muted); margin-bottom: 8px;
+    }
+    .q-text { font-size: 18px; font-weight: 600; line-height: 1.5; margin-bottom: 28px; }
+    .q-options { display: flex; flex-direction: column; gap: 10px; }
+    .q-option {
+      padding: 14px 18px;
+      border: 1.5px solid var(--c-border);
+      border-radius: 12px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--c-white);
+      text-align: left;
+      width: 100%;
+    }
+    .q-option:hover { border-color: var(--c1); background: var(--c3); }
+    .q-option.selected {
+      border-color: var(--c1); background: var(--c3);
+      color: var(--c1); font-weight: 600;
+    }
+    .q-next {
+      margin-top: 24px; width: 100%;
+      padding: 14px;
+      background: var(--c-border); color: var(--c-muted);
+      border: none; border-radius: 12px;
+      font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .q-next.active {
+      background: linear-gradient(135deg, var(--c1), var(--c2));
+      color: white;
+      box-shadow: 0 4px 16px rgba(79, 70, 229, 0.25);
+    }
+
+    /* Result screen */
+    .result-screen { text-align: center; padding-top: 40px; }
+    .result-header { margin-bottom: 8px; font-size: 14px; color: var(--c-muted); }
+    .result-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .result-subtitle { font-size: 14px; color: var(--c-muted); margin-bottom: 32px; line-height: 1.6; }
+    .radar-wrap { position: relative; width: 260px; height: 260px; margin: 0 auto 32px; }
+    .radar-canvas { width: 100%; height: 100%; }
+    .radar-labels { position: absolute; inset: 0; }
+    .r-label {
+      position: absolute; font-size: 12px; font-weight: 600;
+      color: var(--c-text); text-align: center;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .r-label-sub { font-size: 11px; color: var(--c-muted); font-weight: 400; }
+
+    /* Dimension cards */
+    .dim-cards { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; text-align: left; }
+    .dim-card {
+      padding: 16px; border-radius: 14px;
+      border: 1.5px solid var(--c-border);
+      transition: all 0.2s;
+    }
+    .dim-card.low { border-color: #FCA5A5; background: #FEF2F2; }
+    .dim-card.mid { border-color: #FCD34D; background: #FEFCE8; }
+    .dim-card.high { border-color: #86EFAC; background: #F0FDF4; }
+    .dim-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .dim-card-name { font-size: 14px; font-weight: 600; }
+    .dim-card-score { font-size: 13px; font-weight: 700; }
+    .dim-card.low .dim-card-score { color: var(--c-red); }
+    .dim-card.mid .dim-card-score { color: var(--c-orange); }
+    .dim-card.high .dim-card-score { color: var(--c-green); }
+    .dim-bar { height: 6px; background: var(--c-border); border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+    .dim-bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
+    .dim-card.low .dim-bar-fill { background: var(--c-red); }
+    .dim-card.mid .dim-bar-fill { background: var(--c-orange); }
+    .dim-card.high .dim-bar-fill { background: var(--c-green); }
+    .dim-card-tip { font-size: 12px; color: var(--c-muted); line-height: 1.5; }
+
+    /* Report section */
+    .report-box {
+      background: var(--c3); border-radius: 16px;
+      padding: 20px; text-align: left; margin-bottom: 24px;
+    }
+    .report-box h3 { font-size: 15px; font-weight: 700; margin-bottom: 10px; color: var(--c1); }
+    .report-box p { font-size: 14px; line-height: 1.7; color: var(--c-text); }
+    .report-box ul { padding-left: 18px; margin-top: 8px; }
+    .report-box li { font-size: 14px; line-height: 1.8; color: var(--c-text); }
+
+    /* CTA */
+    .cta-section h2 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .cta-section p { font-size: 14px; color: var(--c-muted); margin-bottom: 16px; line-height: 1.6; }
+    .btn-download {
+      display: block; width: 100%; padding: 15px;
+      background: linear-gradient(135deg, var(--c1), var(--c2));
+      color: white; border: none; border-radius: 14px;
+      font-size: 16px; font-weight: 600;
+      cursor: pointer; margin-bottom: 12px;
+      box-shadow: 0 4px 20px rgba(79, 70, 229, 0.3);
+    }
+    .btn-share {
+      display: block; width: 100%; padding: 13px;
+      background: transparent;
+      color: var(--c1); border: 1.5px solid var(--c1);
+      border-radius: 14px; font-size: 15px; font-weight: 600;
+      cursor: pointer; margin-bottom: 20px;
+    }
+    .share-hint { font-size: 12px; color: var(--c-muted); margin-top: 4px; }
+
+    /* Share modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200; align-items: flex-end; justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-sheet {
+      background: white; border-radius: 20px 20px 0 0;
+      padding: 32px 24px 48px; width: 100%; max-width: 480px;
+      text-align: center;
+    }
+    .modal-sheet h3 { font-size: 18px; font-weight: 700; margin-bottom: 24px; }
+    .share-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .share-item {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      cursor: pointer;
+    }
+    .share-icon { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+    .share-icon.wx { background: #07C160; color: white; }
+    .share-icon.moments { background: #07C160; color: white; }
+    .share-icon.copy { background: var(--c1); color: white; }
+    .share-icon.save { background: var(--c-orange); color: white; }
+    .share-label { font-size: 12px; color: var(--c-muted); }
+    .modal-close { margin-top: 20px; color: var(--c-muted); font-size: 14px; cursor: pointer; }
+
+    /* Bottom nav dots */
+    .nav-dots { display: flex; gap: 6px; justify-content: center; margin-top: 16px; }
+    .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c-border); transition: all 0.3s; }
+    .nav-dot.active { background: var(--c1); width: 20px; border-radius: 3px; }
+
+    /* Disclaimer */
+    .disclaimer { font-size: 11px; color: #94A3B8; text-align: center; margin-top: 20px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <!-- Progress bar -->
+  <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+  <!-- Screen 0: Start -->
+  <div class="screen active" id="screenStart">
+    <div class="start-screen">
+      <div class="start-icon">🌱</div>
+      <h1>你的五维幸福感健康吗？</h1>
+      <p>越来越努力，却越来越不开心？<br>大多数人的焦虑，根源是人生框架缺失。<br>用5分钟，测出你五个维度的真实状态。</p>
+      <div class="start-meta">
+        <span>共15道题</span>
+        <span>约5分钟</span>
+        <span>免费</span>
+      </div>
+      <button class="btn-primary" onclick="startQuiz()">开始诊断 →</button>
+    </div>
+  </div>
+
+  <!-- Screen 1: Questions -->
+  <div class="screen" id="screenQuestions">
+    <div class="q-dim-tag" id="qDimTag">🔋 身体健康</div>
+    <div class="q-number" id="qNumber">第 1/15 题</div>
+    <div class="q-text" id="qText"></div>
+    <div class="q-options" id="qOptions"></div>
+    <button class="q-next" id="qNext" onclick="nextQuestion()">下一题</button>
+    <div class="nav-dots" id="navDots"></div>
+  </div>
+
+  <!-- Screen 2: Result -->
+  <div class="screen" id="screenResult">
+    <div class="result-screen">
+      <div class="result-header">你的五维幸福感诊断报告</div>
+      <div class="result-title" id="resultTitle">正在分析...</div>
+      <div class="result-subtitle" id="resultSubtitle"></div>
+
+      <!-- Radar Chart -->
+      <div class="radar-wrap">
+        <canvas class="radar-canvas" id="radarCanvas" width="520" height="520"></canvas>
+        <div class="radar-labels" id="radarLabels"></div>
+      </div>
+
+      <!-- Dimension cards -->
+      <div class="dim-cards" id="dimCards"></div>
+
+      <!-- Weakest dimension insight -->
+      <div class="report-box" id="reportBox">
+        <h3>📋 诊断小结</h3>
+        <p id="reportText"></p>
+      </div>
+
+      <!-- CTA -->
+      <div class="cta-section">
+        <h2>🎯 你的短板清晰了，下一步是行动</h2>
+        <p>一个人的人生框架，最怕的不是失衡，而是不知道哪里失衡。<br>现在你知道了。</p>
+        <button class="btn-download" onclick="showComingSoon()">下载完整版 App（即将上线）</button>
+        <button class="btn-share" onclick="showShareModal()">分享给朋友，测测他们 →</button>
+        <p class="share-hint">已有 <strong>2,847</strong> 人完成测评</p>
+      </div>
+
+      <p class="disclaimer">本测评仅供参考，不构成医疗/心理/投资建议。结果由用户自评产生，可能存在主观偏差。</p>
+    </div>
+  </div>
+</div>
+
+<!-- Share Modal -->
+<div class="modal-overlay" id="shareModal">
+  <div class="modal-sheet">
+    <h3>分享给朋友</h3>
+    <div class="share-grid">
+      <div class="share-item" onclick="shareTo('wx')">
+        <div class="share-icon wx">💬</div>
+        <span class="share-label">微信好友</span>
+      </div>
+      <div class="share-item" onclick="shareTo('moments')">
+        <div class="share-icon moments">🖼️</div>
+        <span class="share-label">朋友圈</span>
+      </div>
+      <div class="share-item" onclick="shareTo('copy')">
+        <div class="share-icon copy">🔗</div>
+        <span class="share-label">复制链接</span>
+      </div>
+      <div class="share-item" onclick="shareTo('save')">
+        <div class="share-icon save">📥</div>
+        <span class="share-label">保存图片</span>
+      </div>
+    </div>
+    <div class="modal-close" onclick="closeShareModal()">取消</div>
+  </div>
+</div>
+
+<script>
+// ─── Quiz Data ───────────────────────────────────────────────
+const dimensions = [
+  { id: 'health',  name: '身体健康',   icon: '🔋', color: '#22C55E' },
+  { id: 'career',  name: '事业有成',   icon: '🚀', color: '#3B82F6' },
+  { id: 'relation',name: '关系美满',   icon: '💛', color: '#F97316' },
+  { id: 'finance', name: '财务安全',   icon: '💰', color: '#8B5CF6' },
+  { id: 'meaning', name: '热爱与意义', icon: '✨', color: '#EC4899' },
+];
+
+const questions = [
+  // Health (3 questions, index 0-2)
+  { dim: 'health', q: '过去一个月，你的睡眠质量怎么样？', options: ['经常失眠或睡眠很浅', '偶尔睡不好，但影响不大', '基本睡得还可以', '睡眠质量很好，每天精神充沛'], scores: [1, 2, 3, 4] },
+  { dim: 'health', q: '你目前每周运动几次？', options: ['几乎不运动', '偶尔动一动（少于1次/周）', '每周1-2次', '每周3次及以上'], scores: [1, 2, 3, 4] },
+  { dim: 'health', q: '你对自己目前的饮食习惯满意吗？', options: ['经常乱吃，三餐不规律', '偶尔乱吃，大体还行', '比较规律，但没有太注意', '饮食规律，营养搭配合理'], scores: [1, 2, 3, 4] },
+  // Career (3 questions, index 3-5)
+  { dim: 'career', q: '你最近有在学习新东西或提升自己吗？', options: ['完全没有，每天只是应付工作', '偶尔看看，但没有系统学习', '有在学习，但不够持续', '持续学习，有明确的成长计划'], scores: [1, 2, 3, 4] },
+  { dim: 'career', q: '你有多久没有做阶段性复盘了？', options: ['从来不复盘', '很久没做了', '偶尔做，但不系统', '每月/每周都有复盘习惯'], scores: [1, 2, 3, 4] },
+  { dim: 'career', q: '如果现在换一个赛道，你有信心吗？', options: ['完全没有，不知道自己能做什么', '有点担心，能力不够自信', '有一些信心，但还需要准备', '很有信心，有可迁移的能力'], scores: [1, 2, 3, 4] },
+  // Relation (3 questions, index 6-8)
+  { dim: 'relation', q: '你和伴侣/家人的关系，让你感到幸福吗？', options: ['关系紧张或缺失，经常不开心', '关系一般，偶尔有矛盾', '关系还不错，比较稳定', '关系很好，是重要的情感支撑'], scores: [1, 2, 3, 4] },
+  { dim: 'relation', q: '你有可以深聊心事的朋友吗？', options: ['几乎没有，感觉很孤独', '有1-2个，但联系不多', '有一些好朋友，经常联系', '有深度朋友圈，互相支持'], scores: [1, 2, 3, 4] },
+  { dim: 'relation', q: '你的人脉中，有多少是高价值的互惠关系？', options: ['几乎没有，全是消耗型关系', '很少，不知道怎么筛选', '有一些，比例不高', '有清晰的高价值人脉网络'], scores: [1, 2, 3, 4] },
+  // Finance (3 questions, index 9-11)
+  { dim: 'finance', q: '你目前有系统的理财习惯吗？', options: ['完全没有，钱放银行或余额宝', '有一些，但没有规划', '有理财，但比较单一', '有完整的资产配置计划'], scores: [1, 2, 3, 4] },
+  { dim: 'finance', q: '你的应急储备金（够3-6个月生活费）够吗？', options: ['完全没有储蓄', '有一点，但不够3个月', '差不多够3个月', '充足，覆盖6个月以上'], scores: [1, 2, 3, 4] },
+  { dim: 'finance', q: '你对未来的财务安全有信心吗？', options: ['完全没有，很焦虑', '有点担心，走一步看一步', '有一定信心，但不确定', '很有信心，有清晰的财务规划'], scores: [1, 2, 3, 4] },
+  // Meaning (3 questions, index 12-14)
+  { dim: 'meaning', q: '你有没有一件事，做的时候让你感到"这就是我"？', options: ['完全想不出来有这种时刻', '偶尔有一瞬间的感觉', '有，但感觉不够强烈', '很清晰，我知道是什么'], scores: [1, 2, 3, 4] },
+  { dim: 'meaning', q: '你是否在创造，而不只是消费？（比如画画、写作、做产品，而非只是刷视频、看剧）', options: ['几乎所有时间都在消费内容', '偶尔做一些，但没有持续', '有固定创作习惯，但频率不高', '持续创作，有自己的作品'], scores: [1, 2, 3, 4] },
+  { dim: 'meaning', q: '你做的事，有没有让你觉得对这个世界有一点点价值？', options: ['完全没有这种感觉', '偶尔有一点，但很快消失', '有时能感受到，但不稳定', '经常感受到，这是我做事的动力'], scores: [1, 2, 3, 4] },
+];
+
+// ─── State ───────────────────────────────────────────────────
+let currentQ = 0;
+let answers = []; // { dim, score }
+let dimScores = { health: 0, career: 0, relation: 0, finance: 0, meaning: 0 };
+let dimCounts = { health: 0, career: 0, relation: 0, finance: 0, meaning: 0 };
+
+// ─── Navigation ──────────────────────────────────────────────
+function startQuiz() {
+  goTo('screenQuestions');
+  renderQuestion();
+}
+
+function nextQuestion() {
+  const sel = document.querySelector('.q-option.selected');
+  if (!sel) return;
+  const score = parseInt(sel.dataset.score);
+  const q = questions[currentQ];
+  answers.push({ dim: q.dim, score });
+  dimScores[q.dim] += score;
+  dimCounts[q.dim]++;
+
+  currentQ++;
+  if (currentQ >= questions.length) {
+    showResult();
+  } else {
+    renderQuestion();
+  }
+}
+
+function selectOption(el) {
+  document.querySelectorAll('.q-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('qNext').classList.add('active');
+}
+
+function renderQuestion() {
+  const q = questions[currentQ];
+  const dim = dimensions.find(d => d.id === q.dim);
+  const progress = (currentQ / questions.length) * 100;
+
+  document.getElementById('progressFill').style.width = progress + '%';
+  document.getElementById('qDimTag').innerHTML = `${dim.icon} ${dim.name}`;
+  document.getElementById('qNumber').textContent = `第 ${currentQ + 1}/${questions.length} 题`;
+  document.getElementById('qText').textContent = q.q;
+
+  const opts = document.getElementById('qOptions');
+  opts.innerHTML = q.options.map((opt, i) =>
+    `<button class="q-option" data-score="${q.scores[i]}" onclick="selectOption(this)">${opt}</button>`
+  ).join('');
+
+  document.getElementById('qNext').classList.remove('active');
+  renderDots();
+}
+
+function renderDots() {
+  const dots = document.getElementById('navDots');
+  dots.innerHTML = questions.map((_, i) =>
+    `<div class="nav-dot${i === currentQ ? ' active' : (i < currentQ ? ' active' : '')}"></div>`
+  ).join('');
+}
+
+// ─── Result ──────────────────────────────────────────────────
+function showResult() {
+  goTo('screenResult');
+  document.getElementById('progressFill').style.width = '100%';
+
+  // Normalize to 0-100
+  const normalized = {};
+  dimensions.forEach(d => {
+    const max = dimCounts[d.id] * 4;
+    const score = dimScores[d.id];
+    normalized[d.id] = Math.round((score / max) * 100);
+  });
+
+  const sorted = [...dimensions].sort((a, b) => normalized[a.id] - normalized[b.id]);
+  const weakest = sorted[0];
+  const lowestScore = normalized[weakest.id];
+
+  // Title logic
+  let title = '';
+  if (lowestScore < 40) title = '⚠️ 多个维度亮红灯，需要系统性重建';
+  else if (lowestScore < 60) title = '📌 人生框架有失衡，需重点补足';
+  else if (lowestScore < 75) title = '✨ 整体不错，局部还有提升空间';
+  else title = '🌟 五维较均衡，保持并继续精进';
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultSubtitle').textContent = `你的${weakest.name}维度得分最低，是当前最需要关注的板块`;
+
+  // Draw radar
+  drawRadar(normalized);
+  renderDimLabels(normalized);
+  renderDimCards(normalized);
+  renderReport(normalized, sorted);
+}
+
+function drawRadar(normalized) {
+  const canvas = document.getElementById('radarCanvas');
+  const ctx = canvas.getContext('2d');
+  const cx = 260, cy = 260;
+  const r = 180;
+  const n = 5;
+  const angles = [];
+  for (let i = 0; i < n; i++) angles.push((i / n) * 2 * Math.PI - Math.PI / 2);
+
+  ctx.clearRect(0, 0, 520, 520);
+
+  // Background rings
+  for (let ring = 1; ring <= 4; ring++) {
+    const rr = (ring / 4) * r;
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const a = angles[i];
+      const x = cx + rr * Math.cos(a);
+      const y = cy + rr * Math.sin(a);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = ring === 4 ? '#CBD5E1' : '#E2E8F0';
+    ctx.lineWidth = ring === 4 ? 1.5 : 1;
+    ctx.stroke();
+  }
+
+  // Axis lines
+  for (let i = 0; i < n; i++) {
+    const a = angles[i];
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+    ctx.strokeStyle = '#E2E8F0';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Data polygon
+  const vals = dimensions.map(d => normalized[d.id] / 100);
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const a = angles[i];
+    const x = cx + vals[i] * r * Math.cos(a);
+    const y = cy + vals[i] * r * Math.sin(a);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+
+  // Gradient fill
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  grad.addColorStop(0, 'rgba(79, 70, 229, 0.25)');
+  grad.addColorStop(1, 'rgba(129, 140, 248, 0.1)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.strokeStyle = '#4F46E5';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Data dots
+  for (let i = 0; i < n; i++) {
+    const a = angles[i];
+    const x = cx + vals[i] * r * Math.cos(a);
+    const y = cy + vals[i] * r * Math.sin(a);
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#4F46E5';
+    ctx.fill();
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+}
+
+function renderDimLabels(normalized) {
+  const container = document.getElementById('radarLabels');
+  const cx = 130, cy = 130, r = 180;
+  const n = 5;
+  const angles = [];
+  for (let i = 0; i < n; i++) angles.push((i / n) * 2 * Math.PI - Math.PI / 2);
+  const offsetR = r + 28;
+
+  container.innerHTML = dimensions.map((d, i) => {
+    const a = angles[i];
+    const x = cx + offsetR * Math.cos(a);
+    const y = cy + offsetR * Math.sin(a);
+    return `<div class="r-label" style="left:${x}px;top:${y}px;">
+      ${d.icon} ${d.name}<br><span class="r-label-sub">${normalized[d.id]}分</span>
+    </div>`;
+  }).join('');
+}
+
+function renderDimCards(normalized) {
+  const container = document.getElementById('dimCards');
+  const sorted = [...dimensions].sort((a, b) => normalized[a.id] - normalized[b.id]);
+
+  container.innerHTML = sorted.map(d => {
+    const s = normalized[d.id];
+    const cls = s < 45 ? 'low' : s < 65 ? 'mid' : 'high';
+    const tips = {
+      health:  ['先从睡好觉开始，这是精力的基础', '保持规律运动和饮食，给身体充电', '你的身体状态不错，保持好习惯'],
+      career:  ['先建立学习习惯，每天30分钟即可', '开始做周复盘，总结经验教训', '你的事业状态良好，继续精进'],
+      relation:['从每天和家人好好说话开始', '主动约一个老朋友喝咖啡', '你的关系网健康，继续维护'],
+      finance: ['先存够3个月的应急储备金', '开始学习基础理财知识', '你的财务基础不错，继续完善'],
+      meaning: ['找一个让你感到"这就是我"的时刻', '开始小规模创作，不必完美', '你的意义感不错，继续深化你的热爱'],
+    };
+    const tip = tips[d.id][s < 45 ? 0 : s < 65 ? 1 : 2];
+    return `<div class="dim-card ${cls}">
+      <div class="dim-card-header">
+        <span class="dim-card-name">${d.icon} ${d.name}</span>
+        <span class="dim-card-score">${s}分</span>
+      </div>
+      <div class="dim-bar"><div class="dim-bar-fill" style="width:${s}%"></div></div>
+      <div class="dim-card-tip">💡 ${tip}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderReport(normalized, sorted) {
+  const weakest = sorted[0];
+  const reports = {
+    health: `你的「身体健康」得分最低（${normalized.health}分），这是所有幸福感的基础。<br><br>睡眠不好，会影响情绪、决策、人际关系，甚至财务决策——它是拖垮其他维度的隐形杀手。<br><br><strong>建议从今晚开始：</strong><ul><li>睡前1小时戒掉手机蓝光</li><li>固定起床时间，哪怕周末也一样</li><li>每天走满6000步，不求剧烈运动</li></ul>`,
+    career: `你的「事业有成」得分最低（${normalized.career}分），这意味着你可能处于"忙碌但没有成长"的状态。<br><br>没有学习、没有复盘的事业，就像一辆没有导航的车——开得再快也不知道去哪里。<br><br><strong>建议从今天开始：</strong><ul><li>每天花30分钟学习一个和工作相关的技能</li><li>每周日晚花15分钟做周复盘</li><li>盘点自己的可迁移能力，为切换赛道做准备</li></ul>`,
+    relation: `你的「关系美满」得分最低（${normalized.relation}分），这是最容易让人感到孤独和焦虑的短板。<br><br>研究表明，影响幸福感最强的因素不是收入，而是亲密关系的质量。<br><br><strong>建议从本周开始：</strong><ul><li>每天给伴侣/家人一个不刷手机的30分钟</li><li>主动联系一个久未联系的好友</li><li>每月认识1个新朋友，有意识地扩展高价值人脉</li></ul>`,
+    finance: `你的「财务安全」得分最低（${normalized.finance}分），这可能是你焦虑感的重要来源之一。<br><br>没有财务安全垫的人生，就像在悬崖边走钢丝——任何意外都可能把你打回原形。<br><br><strong>建议从本月开始：</strong><ul><li>算出你的月度开支，先存下10%</li><li>配置基础保险（医疗+意外+寿险）</li><li>学习指数基金定投，从每月500元开始</li></ul>`,
+    meaning: `你的「热爱与意义」得分最低（${normalized.meaning}分），这是很多人忽略的第五根支柱。<br><br>你可能很忙、很努力，但如果做的一切都不能让你感到"这就是我"、或对世界有一点点价值，久了就会陷入空心感。<br><br><strong>建议从本周开始：</strong><ul><li>回顾过去，什么事让你进入心流状态？哪怕是很小的事</li><li>开始做一件创造性的事——写、画、拍、做，不需要完美</li><li>问自己：如果不考虑收入，我最想做什么？那个答案藏着你的热爱</li></ul>`,
+  };
+  document.getElementById('reportText').innerHTML = reports[weakest.id];
+}
+
+// ─── UI Helpers ──────────────────────────────────────────────
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showShareModal() {
+  document.getElementById('shareModal').classList.add('active');
+}
+function closeShareModal() {
+  document.getElementById('shareModal').classList.remove('active');
+}
+function shareTo(type) {
+  if (type === 'copy') {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      alert('链接已复制，快去分享吧！');
+      closeShareModal();
+    });
+  } else {
+    alert('分享功能即将上线，敬请期待！');
+    closeShareModal();
+  }
+}
+function showComingSoon() {
+  alert('完整版 App 正在开发中，敬请期待！\n\n可以先关注我们，第一时间获取更新。');
+}
+</script>
+</body>
+</html>
