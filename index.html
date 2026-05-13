@@ -441,21 +441,29 @@ function showResult() {
   const sorted = [...dimensions].sort((a, b) => normalized[a.id] - normalized[b.id]);
   const weakest = sorted[0];
   const lowestScore = normalized[weakest.id];
+  const allAbove80 = dimensions.every(d => normalized[d.id] >= 80);
 
   // Title logic
   let title = '';
-  if (lowestScore < 40) title = '⚠️ 多个维度亮红灯，需要系统性重建';
-  else if (lowestScore < 60) title = '📌 人生框架有失衡，需重点补足';
-  else if (lowestScore < 75) title = '✨ 整体不错，局部还有提升空间';
-  else title = '🌟 五维较均衡，保持并继续精进';
+  let subtitle = '';
+  if (allAbove80) {
+    title = '✨ 你的五维人生，稳中有升';
+    subtitle = '五个维度都在 80 分以上，继续保持就好 😊';
+  } else if (lowestScore < 60) {
+    title = '📌 人生框架有失衡，重点关注这一项';
+    subtitle = `你的${weakest.name}得分 ${lowestScore} 分，是当前最值得投入的板块`;
+  } else {
+    title = '🌱 整体不错，部分维度有精进空间';
+    subtitle = `你的${weakest.name}得分 ${lowestScore} 分，可以做得更好`;
+  }
   document.getElementById('resultTitle').textContent = title;
-  document.getElementById('resultSubtitle').textContent = `你的${weakest.name}维度得分最低，是当前最需要关注的板块`;
+  document.getElementById('resultSubtitle').textContent = subtitle;
 
   // Draw radar
   drawRadar(normalized);
   renderDimLabels(normalized);
   renderDimCards(normalized);
-  renderReport(normalized, sorted);
+  renderReport(normalized, sorted, allAbove80);
 }
 
 function drawRadar(normalized) {
@@ -556,15 +564,15 @@ function renderDimCards(normalized) {
 
   container.innerHTML = sorted.map(d => {
     const s = normalized[d.id];
-    const cls = s < 45 ? 'low' : s < 65 ? 'mid' : 'high';
+    const cls = s < 60 ? 'low' : s < 80 ? 'mid' : 'high';
     const tips = {
-      health:  ['先从睡好觉开始，这是精力的基础', '保持规律运动和饮食，给身体充电', '你的身体状态不错，保持好习惯'],
-      career:  ['先建立学习习惯，每天30分钟即可', '开始做周复盘，总结经验教训', '你的事业状态良好，继续精进'],
-      relation:['从每天和家人好好说话开始', '主动约一个老朋友喝咖啡', '你的关系网健康，继续维护'],
-      finance: ['先存够3个月的应急储备金', '开始学习基础理财知识', '你的财务基础不错，继续完善'],
-      meaning: ['找一个让你感到"这就是我"的时刻', '开始小规模创作，不必完美', '你的意义感不错，继续深化你的热爱'],
+      health:  ['睡眠是精力的根，先从睡好觉开始调整', '运动和饮食保持规律，偶尔偷懒也没关系', '你的身体状态很棒，保持好习惯，偶尔加点运动更佳'],
+      career:  ['建立学习习惯，每天30分钟，比不学强', '持续复盘和积累，方向对了成长会加速', '你的事业状态很好，保持学习和复盘习惯'],
+      relation:['从每天和家人好好说话开始，关系需要投入', '主动维护老朋友，高质量关系需要经营', '你的人际关系健康，继续用心维护'],
+      finance: ['先存够3个月应急储备金，这是安全感的底线', '系统学习理财知识，慢慢构建财务护城河', '你的财务基础不错，继续完善储蓄和投资习惯'],
+      meaning: ['找一个让你感到"这就是我"的时刻，从小开始', '持续投入热爱，不用完美，先开始再说', '你的意义感不错，继续深化你的热爱和创造'],
     };
-    const tip = tips[d.id][s < 45 ? 0 : s < 65 ? 1 : 2];
+    const tip = tips[d.id][s < 60 ? 0 : s < 80 ? 1 : 2];
     return `<div class="dim-card ${cls}">
       <div class="dim-card-header">
         <span class="dim-card-name">${d.icon} ${d.name}</span>
@@ -576,14 +584,30 @@ function renderDimCards(normalized) {
   }).join('');
 }
 
-function renderReport(normalized, sorted) {
+function renderReport(normalized, sorted, allAbove80) {
   const weakest = sorted[0];
+
+  if (allAbove80) {
+    // 全部 ≥ 80：正面总结，不说短板
+    const avgScore = Math.round(dimensions.reduce((sum, d) => sum + normalized[d.id], 0) / dimensions.length);
+    document.getElementById('reportText').innerHTML =
+      `你的五个维度得分都在 80 分以上，恭喜你！<br><br>` +
+      `五维均衡的人，通常有很好的自我认知和执行力。你已经走在大多数人前面了。<br><br>` +
+      `<strong>接下来的建议：</strong><ul>` +
+      `<li>保持现有的好习惯，不要因为"感觉还行"就松懈</li>` +
+      `<li>可以定期复盘，防止某个维度悄悄下滑</li>` +
+      `<li>如果想更进一步，可以选择一个维度重点突破，享受"优秀"变"卓越"的过程</li>` +
+      `</ul>你已经拥有了一个稳健的人生框架，继续保持就好 🌟`;
+    return;
+  }
+
+  // 有短板：针对最弱维度出报告
   const reports = {
-    health: `你的「身体健康」得分最低（${normalized.health}分），这是所有幸福感的基础。<br><br>睡眠不好，会影响情绪、决策、人际关系，甚至财务决策——它是拖垮其他维度的隐形杀手。<br><br><strong>建议从今晚开始：</strong><ul><li>睡前1小时戒掉手机蓝光</li><li>固定起床时间，哪怕周末也一样</li><li>每天走满6000步，不求剧烈运动</li></ul>`,
-    career: `你的「事业有成」得分最低（${normalized.career}分），这意味着你可能处于"忙碌但没有成长"的状态。<br><br>没有学习、没有复盘的事业，就像一辆没有导航的车——开得再快也不知道去哪里。<br><br><strong>建议从今天开始：</strong><ul><li>每天花30分钟学习一个和工作相关的技能</li><li>每周日晚花15分钟做周复盘</li><li>盘点自己的可迁移能力，为切换赛道做准备</li></ul>`,
-    relation: `你的「关系美满」得分最低（${normalized.relation}分），这是最容易让人感到孤独和焦虑的短板。<br><br>研究表明，影响幸福感最强的因素不是收入，而是亲密关系的质量。<br><br><strong>建议从本周开始：</strong><ul><li>每天给伴侣/家人一个不刷手机的30分钟</li><li>主动联系一个久未联系的好友</li><li>每月认识1个新朋友，有意识地扩展高价值人脉</li></ul>`,
-    finance: `你的「财务安全」得分最低（${normalized.finance}分），这可能是你焦虑感的重要来源之一。<br><br>没有财务安全垫的人生，就像在悬崖边走钢丝——任何意外都可能把你打回原形。<br><br><strong>建议从本月开始：</strong><ul><li>算出你的月度开支，先存下10%</li><li>配置基础保险（医疗+意外+寿险）</li><li>学习指数基金定投，从每月500元开始</li></ul>`,
-    meaning: `你的「热爱与意义」得分最低（${normalized.meaning}分），这是很多人忽略的第五根支柱。<br><br>你可能很忙、很努力，但如果做的一切都不能让你感到"这就是我"、或对世界有一点点价值，久了就会陷入空心感。<br><br><strong>建议从本周开始：</strong><ul><li>回顾过去，什么事让你进入心流状态？哪怕是很小的事</li><li>开始做一件创造性的事——写、画、拍、做，不需要完美</li><li>问自己：如果不考虑收入，我最想做什么？那个答案藏着你的热爱</li></ul>`,
+    health: `你的「身体健康」得分最低（${normalized.health}分）。<br><br>身体是所有幸福感的底层支撑——睡眠不好，情绪会波动，决策会失误，人际关系也会受影响。<br><br><strong>建议从今晚开始：</strong><ul><li>睡前1小时减少手机使用</li><li>固定起床时间，哪怕周末也一样</li><li>每天走满6000步，不求剧烈运动</li></ul>`,
+    career: `你的「事业有成」得分最低（${normalized.career}分）。<br><br>忙碌不等于成长，如果一直处于"应付模式"，久了会产生职业倦怠。<br><br><strong>建议从今天开始：</strong><ul><li>每天花30分钟学习和工作相关的技能</li><li>每周做一次15分钟的阶段性复盘</li><li>盘点自己的可迁移能力，为未来做准备</li></ul>`,
+    relation: `你的「关系美满」得分最低（${normalized.relation}分）。<br><br>研究表明，影响幸福感最强的因素不是收入，而是亲密关系的质量。<br><br><strong>建议从本周开始：</strong><ul><li>每天给家人一段不刷手机的时间</li><li>主动联系一个久未联系的朋友</li><li>每月有意识地认识1个新朋友</li></ul>`,
+    finance: `你的「财务安全」得分最低（${normalized.finance}分）。<br><br>没有财务底垫的人生，抗风险能力会很弱，任何意外都可能打乱节奏。<br><br><strong>建议从本月开始：</strong><ul><li>算出每月开支，先存下10%</li><li>配置基础保险（医疗+意外）</li><li>学习基础理财，从指数基金定投开始</li></ul>`,
+    meaning: `你的「热爱与意义」得分最低（${normalized.meaning}分）。<br><br>这一条最容易被忽略，但它决定了你在"做自己"这件事上有多自由。<br><br><strong>建议从本周开始：</strong><ul><li>回忆过去什么事让你进入心流状态，哪怕是很小的事</li><li>开始做一件创造性的事——写、画、拍、做，不需要完美</li><li>问自己：如果不考虑收入，我最想做什么？那个答案藏着你的热爱</li></ul>`,
   };
   document.getElementById('reportText').innerHTML = reports[weakest.id];
 }
